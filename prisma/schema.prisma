@@ -1,0 +1,364 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Roles {
+  ADMIN
+  DOCTOR
+  NURSE
+  RECEPTIONIST
+  PATIENT
+}
+
+
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  FINISHED
+  CANCELED
+}
+
+
+
+enum ExamStatus {
+  REQUESTED
+  SCHEDULED
+  DONE
+  DELIVERED
+}
+
+
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Roles
+
+  patient   Patient?
+  doctor    Doctor?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user")
+}
+
+
+
+
+model Patient {
+  id        String   @id @default(uuid())
+
+  cpf       String   @unique
+
+  birthDate DateTime
+
+  phone     String?
+
+  gender    String?
+
+  height    Float
+
+  weight    Float
+
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+
+
+  addressId         String? @unique
+  address           Address? @relation(fields: [addressId], references: [id])
+
+  healthInsuranceId String?
+  healthInsurance   HealthInsurance? @relation(fields: [healthInsuranceId], references: [id])
+
+  appointments      Appointment[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("patient")
+}
+
+
+
+
+
+model Doctor {
+  id            String @id @default(uuid())
+
+  crm           String @unique
+
+  phone         String?
+
+  userId        String @unique
+  user          User   @relation(fields: [userId], references: [id])
+
+  hospitalId    String
+  hospital      Hospital @relation(fields: [hospitalId], references: [id])
+
+  specialityId  String
+  speciality    Speciality @relation(fields: [specialityId], references: [id])
+
+
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("doctor")
+}
+
+
+
+
+
+
+
+
+model Hospital {
+  id        String @id @default(uuid())
+
+  name      String
+
+  cnpj      String @unique
+
+  phone     String
+
+  email     String
+
+  doctors   Doctor[]
+
+  @@map("hospital")
+}
+
+
+
+
+
+
+
+
+model Speciality {
+  id          String @id @default(uuid())
+
+  name        String
+
+  description String?
+
+  doctors     Doctor[]
+
+  @@map("speciality")
+}
+
+
+
+
+model Address {
+  id        String   @id @default(uuid())
+
+  street    String
+  number    String
+  district  String
+  city      String
+  state     String
+  zipCode   String
+
+  patient   Patient?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("address")
+}
+
+
+
+model HealthInsurance {
+  id                 String @id @default(uuid())
+
+  name               String
+  registrationNumber String @unique
+
+  patients           Patient[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("health_insurance")
+}
+
+
+
+model Appointment {
+  id            String @id @default(uuid())
+
+  date          DateTime
+
+  status        AppointmentStatus
+
+  reason        String?
+
+  notes         String?
+
+  patientId     String
+  patient       Patient @relation(fields: [patientId], references: [id])
+
+  doctorId      String
+  doctor        Doctor @relation(fields: [doctorId], references: [id])
+
+  medicalRecord MedicalRecord?
+
+  prescriptions Prescription[]
+
+  exams         Exam[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("appointment")
+}
+
+
+
+model MedicalRecord {
+  id             String @id @default(uuid())
+
+  diagnosis      String
+
+  symptoms       String?
+
+  observations   String?
+
+  appointmentId  String @unique
+  appointment    Appointment @relation(fields: [appointmentId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("medical_record")
+}
+
+
+
+
+model Prescription {
+  id           String @id @default(uuid())
+
+  instructions String?
+
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  medications   PrescriptionMedication[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("prescription")
+}
+
+
+
+model Medication {
+  id            String @id @default(uuid())
+
+  name          String
+
+  manufacturer  String?
+
+  description   String?
+
+  prescriptions PrescriptionMedication[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("medication")
+}
+
+
+
+
+model PrescriptionMedication {
+
+  prescriptionId String
+
+  medicationId   String
+
+  dosage         String
+
+  frequency      String
+
+  duration       String
+
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+
+  medication     Medication @relation(fields: [medicationId], references: [id])
+
+  @@id([prescriptionId, medicationId])
+
+  @@map("prescription_medication")
+}
+
+
+
+
+
+model Exam {
+
+  id            String @id @default(uuid())
+
+  name          String
+
+  description   String?
+
+  status        ExamStatus
+
+  appointmentId String
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  result        ExamResult?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("exam")
+}
+
+
+
+model ExamResult {
+
+  id         String @id @default(uuid())
+
+  fileUrl    String?
+
+  result     String
+
+  examId     String @unique
+
+  exam       Exam @relation(fields: [examId], references: [id])
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("exam_result")
+}
